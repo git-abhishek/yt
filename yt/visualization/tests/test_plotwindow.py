@@ -20,11 +20,12 @@ import tempfile
 import unittest
 
 from distutils.version import LooseVersion
+from nose.plugins.attrib import attr
 from nose.tools import assert_true
 
 from yt.testing import \
     fake_random_ds, assert_equal, assert_rel_equal, assert_array_equal, \
-    assert_array_almost_equal, assert_raises, assert_fname
+    assert_array_almost_equal, assert_raises, assert_fname, ANSWER_TEST_TAG
 from yt.utilities.answer_testing.framework import \
     requires_ds, data_dir_load, PlotWindowAttributeTest
 from yt.utilities.exceptions import \
@@ -138,7 +139,8 @@ PROJECTION_METHODS = (
 )
 
 def simple_contour(test_obj, plot):
-    plot.annotate_contour(test_obj.plot_field)
+    plot_args = {"linestyles": "solid"}
+    plot.annotate_contour(test_obj.plot_field, plot_args=plot_args)
 
 def simple_velocity(test_obj, plot):
     plot.annotate_velocity()
@@ -159,8 +161,9 @@ CALLBACK_TESTS = (
     #("simple_all", (simple_contour, simple_velocity, simple_streamlines)),
 )
 
+@attr(ANSWER_TEST_TAG)
 @requires_ds(M7)
-def test_attributes():
+def test_simple_attributes():
     """Test plot member functions that aren't callbacks"""
     plot_field = 'density'
     decimals = 12
@@ -171,11 +174,29 @@ def test_attributes():
             for args in ATTR_ARGS[attr_name]:
                 test = PlotWindowAttributeTest(ds, plot_field, ax, attr_name,
                                                args, decimals)
-                test_attributes.__name__ = test.description
+                test_simple_attributes.__name__ = test.description
+                test.prefix = "attr_%s_%s" % (attr_name, ax)
+                test.answer_name = "plot_window_simple_attributes"
                 yield test
-                for n, r in CALLBACK_TESTS:
-                    yield PlotWindowAttributeTest(ds, plot_field, ax, attr_name,
-                        args, decimals, callback_id=n, callback_runners=r)
+
+@attr(ANSWER_TEST_TAG)
+@requires_ds(M7)
+def test_callback_attributes():
+    """Test plot member functions that are callbacks"""
+    plot_field = 'density'
+    decimals = 12
+
+    ds = data_dir_load(M7)
+    for attr_name in ATTR_ARGS:
+        for args in ATTR_ARGS[attr_name]:
+            for n, r in CALLBACK_TESTS:
+                callback_test = PlotWindowAttributeTest(ds, plot_field, 'x',
+                                                        attr_name, args,
+                                                        decimals, callback_id=n,
+                                                        callback_runners=r)
+                callback_test.prefix = "attr_%s_%s_%s" % (n, attr_name, 'x')
+                callback_test.answer_name = "plot_window_callback_attributes"
+                yield callback_test
 
 
 @requires_ds(WT)
